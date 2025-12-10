@@ -68,7 +68,7 @@
         }
         
         /* ========== 条纹装饰 ========== */
-        .soviet-stripe {
+        .stripe {
             height: 15px;
             background: repeating-linear-gradient(
                 90deg,
@@ -83,7 +83,7 @@
             );
         }
         
-        .soviet-stripe-diagonal {
+        .stripe-diagonal {
             height: 20px;
             background: repeating-linear-gradient(
                 -45deg,
@@ -161,7 +161,7 @@
         }
         
         .header h1 {
-            font-size: 28px;
+            font-size: clamp(14px, 5vw, 28px);
             font-weight: 900;
             color: var(--white);
             text-transform: uppercase;
@@ -170,6 +170,8 @@
                          -1px -1px 0 var(--gold);
             margin-bottom: 8px;
             word-break: break-all;
+            white-space: nowrap;
+            overflow: hidden;
         }
         
         .header .subtitle {
@@ -948,7 +950,7 @@
 </head>
 <body>
     <div class="report-container">
-        <div class="soviet-stripe"></div>
+        <div class="stripe"></div>
         
         <!-- 头部 -->
         <div class="header">
@@ -964,7 +966,7 @@
             </div>
         </div>
         
-        <div class="soviet-stripe-diagonal"></div>
+        <div class="stripe-diagonal"></div>
         
         <!-- 柱状图 -->
         <div class="chart-section">
@@ -1039,7 +1041,7 @@
             </div>
         </div>
         
-        <div class="soviet-stripe"></div>
+        <div class="stripe"></div>
         
         <!-- 榜单 -->
         <div class="section rankings-section">
@@ -1112,7 +1114,7 @@
             </div>
         </div>
         
-        <div class="soviet-stripe-diagonal"></div>
+        <div class="stripe-diagonal"></div>
         
         <!-- 页脚 -->
         <div class="footer">
