@@ -14,6 +14,7 @@ a {
 }
 
 .container {
+  width: 100%;
   max-width: 1080px;
   margin: 32px auto 48px;
   padding: 0 16px;
@@ -82,4 +83,3 @@ input[type="file"] {
   border-radius: 6px;
   font-size: 12px;
 }
-

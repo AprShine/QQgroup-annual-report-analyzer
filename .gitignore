@@ -1,3 +1,4 @@
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -18,79 +19,47 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-
-
 venv/
 ENV/
 env/
-.venv/
-.ENV/
 
-# runtime / build / deps
-frontend/node_modules/
-frontend/dist/
-runtime_outputs/
-playwright/.cache/
-
-
-.idea/
+# IDEs
 .vscode/
+.idea/
 *.swp
 *.swo
-*.sublime-project
-*.sublime-workspace
-.spyderproject
-.spyproject
+*~
 
+# 项目特定
+config.py
+runtime_outputs/
+*.html
+*.png
+!templates/*.html
 
-.ipynb_checkpoints/
-*.ipynb
+# 环境变量
+.env
+backend/.env
+frontend/.env
 
+# 前端
+frontend/node_modules/
+frontend/dist/
+frontend/.DS_Store
 
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-desktop.ini
-
-
+# 数据文件
 *.json
-!package.json
-!package-lock.json
+!package*.json
+!tsconfig*.json
+!.vscode/*.json
 
-
-*_年度热词报告.txt
-*_年度热词报告.html
-*_年度热词报告.png
-*_分析结果.json
-
-
+# 日志
 *.log
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 临时文件
 *.tmp
 *.temp
-*.bak
-*.cache
-
-
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-
-
-.env
-.env.local
-.env.*.local
-
-config.py

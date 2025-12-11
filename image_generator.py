@@ -117,7 +117,12 @@ class AIWordSelector:
     
     def _init_client(self):
         """初始化OpenAI客户端"""
-        if not cfg.OPENAI_API_KEY or cfg.OPENAI_API_KEY == "sk-your-api-key-here":
+        # 支持从环境变量读取API密钥
+        api_key = os.getenv('OPENAI_API_KEY', cfg.OPENAI_API_KEY)
+        base_url = os.getenv('OPENAI_BASE_URL', cfg.OPENAI_BASE_URL)
+        model = os.getenv('OPENAI_MODEL', cfg.OPENAI_MODEL)
+        
+        if not api_key or api_key == "sk-your-api-key-here":
             print("⚠️ 未配置OpenAI API Key，无法使用AI选词")
             return
         
@@ -126,8 +131,8 @@ class AIWordSelector:
             import httpx
             
             self.client = OpenAI(
-                api_key=cfg.OPENAI_API_KEY,
-                base_url=cfg.OPENAI_BASE_URL,
+                api_key=api_key,
+                base_url=base_url,
                 http_client=httpx.Client(timeout=120.0)
             )
         except Exception as e:
@@ -245,7 +250,12 @@ class AICommentGenerator:
     
     def _init_client(self):
         """初始化OpenAI客户端"""
-        if not cfg.OPENAI_API_KEY or cfg.OPENAI_API_KEY == "sk-your-api-key-here":
+        # 支持从环境变量读取API密钥
+        api_key = os.getenv('OPENAI_API_KEY', cfg.OPENAI_API_KEY)
+        base_url = os.getenv('OPENAI_BASE_URL', cfg.OPENAI_BASE_URL)
+        model = os.getenv('OPENAI_MODEL', cfg.OPENAI_MODEL)
+        
+        if not api_key or api_key == "sk-your-api-key-here":
             print("⚠️ 未配置OpenAI API Key，将跳过AI锐评")
             return
         
@@ -254,13 +264,12 @@ class AICommentGenerator:
             import httpx
             
             self.client = OpenAI(
-                api_key=cfg.OPENAI_API_KEY,
-                base_url=cfg.OPENAI_BASE_URL,
+                api_key=api_key,
+                base_url=base_url,
                 http_client=httpx.Client(timeout=60.0)  # 增加超时
             )
             
             # 调试信息
-            import os
             if os.environ.get('HTTPS_PROXY') or os.environ.get('https_proxy'):
                 print("🌐 系统代理已自动加载")
                 
