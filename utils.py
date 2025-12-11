@@ -75,18 +75,6 @@ def clean_text(text):
     
     return text
 
-def calculate_pmi(word, word_freq, total_words, char_freq):
-    if len(word) < 2:
-        return 0
-    p_word = word_freq / total_words
-    p_chars = 1.0
-    for char in word:
-        p_char = char_freq.get(char, 1) / total_words
-        p_chars *= p_char
-    if p_chars == 0:
-        return 0
-    return math.log2(p_word / p_chars) if p_word > 0 else 0
-
 def calculate_entropy(neighbor_freq):
     total = sum(neighbor_freq.values())
     if total == 0:

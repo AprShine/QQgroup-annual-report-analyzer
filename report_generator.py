@@ -3,14 +3,14 @@
 import os
 from datetime import datetime
 
-from config import *
+import config as cfg
 from utils import generate_time_bar
 
 
 class ReportGenerator:
     """报告生成器"""
     
-    def __init__(self, analyzer):
+    def __init__(self, analyzer, output_dir=None):
         """
         初始化报告生成器
         
@@ -19,12 +19,13 @@ class ReportGenerator:
         """
         self.analyzer = analyzer
         self.chat_name = analyzer.chat_name
+        self.output_dir = output_dir
     
     def print_console_report(self):
         """输出控制台简洁报告"""
-        print("\n" + "=" * CONSOLE_WIDTH)
+        print("\n" + "=" * cfg.CONSOLE_WIDTH)
         print(f"📊 {self.chat_name} - 年度热词报告")
-        print("=" * CONSOLE_WIDTH)
+        print("=" * cfg.CONSOLE_WIDTH)
         
         # 热词Top20
         print("\n🔥 热词 Top 20:")
@@ -60,14 +61,17 @@ class ReportGenerator:
             peak_hour = max(hour_data, key=hour_data.get)
             print(f"  最活跃时段: {peak_hour}:00 - {peak_hour+1}:00")
         
-        print("\n" + "=" * CONSOLE_WIDTH)
+        print("\n" + "=" * cfg.CONSOLE_WIDTH)
         print("💡 详细报告已保存到文件")
-        print("=" * CONSOLE_WIDTH)
+        print("=" * cfg.CONSOLE_WIDTH)
     
     def generate_file_report(self):
         """生成详细文件报告"""
         # 构建输出路径（与输入文件同目录）
-        input_dir = os.path.dirname(os.path.abspath(INPUT_FILE))
+        if self.output_dir:
+            input_dir = self.output_dir
+        else:
+            input_dir = os.path.dirname(os.path.abspath(cfg.INPUT_FILE))
         safe_name = self.chat_name.replace('/', '_').replace('\\', '_')
         output_file = os.path.join(input_dir, f"{safe_name}_年度热词报告.txt")
         
@@ -102,7 +106,7 @@ class ReportGenerator:
             # 样本
             if detail['samples']:
                 lines.append(f"    📋 随机样本:")
-                for sample in detail['samples'][:SAMPLE_COUNT]:
+                for sample in detail['samples'][:cfg.SAMPLE_COUNT]:
                     # 截断过长的样本
                     sample_short = sample[:80] + "..." if len(sample) > 80 else sample
                     sample_short = sample_short.replace('\n', ' ')
@@ -169,7 +173,7 @@ class ReportGenerator:
         lines.append("=" * 60)
         
         # 写入文件
-        with open(output_file, 'w', encoding=OUTPUT_ENCODING) as f:
+        with open(output_file, 'w', encoding=cfg.OUTPUT_ENCODING) as f:
             f.write('\n'.join(lines))
         
         print(f"\n📄 报告已保存: {output_file}")

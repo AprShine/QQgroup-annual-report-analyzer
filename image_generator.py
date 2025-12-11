@@ -6,8 +6,7 @@ import json
 import math
 import asyncio
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-from config import (ENABLE_IMAGE_EXPORT, INPUT_FILE, 
-                   OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL)
+import config as cfg
 
 
 # 每个词独立的贡献者颜色
@@ -83,7 +82,7 @@ class AICommentGenerator:
     
     def _init_client(self):
         """初始化OpenAI客户端"""
-        if not OPENAI_API_KEY or OPENAI_API_KEY == "sk-your-api-key-here":
+        if not cfg.OPENAI_API_KEY or cfg.OPENAI_API_KEY == "sk-your-api-key-here":
             print("⚠️ 未配置OpenAI API Key，将跳过AI锐评")
             return
         
@@ -92,8 +91,8 @@ class AICommentGenerator:
             import httpx
             
             self.client = OpenAI(
-                api_key=OPENAI_API_KEY,
-                base_url=OPENAI_BASE_URL,
+                api_key=cfg.OPENAI_API_KEY,
+                base_url=cfg.OPENAI_BASE_URL,
                 http_client=httpx.Client(timeout=60.0)  # 增加超时
             )
             
@@ -124,7 +123,7 @@ class AICommentGenerator:
 
         try:
             response = self.client.chat.completions.create(
-                model=OPENAI_MODEL,
+                model=cfg.OPENAI_MODEL,
                 messages=[
                     {"role": "system", "content": self.SYSTEM_PROMPT},
                     {"role": "user", "content": user_prompt}
@@ -174,12 +173,12 @@ class AICommentGenerator:
 class ImageGenerator:
     """图片报告生成器"""
     
-    def __init__(self, analyzer=None, json_path=None):
+    def __init__(self, analyzer=None, json_path=None, output_dir=None):
         self.analyzer = analyzer
         self.json_data = None
         self.selected_words = []
         self.ai_comments = {}
-        self.output_dir = os.path.dirname(os.path.abspath(INPUT_FILE))
+        self.output_dir = output_dir or os.path.dirname(os.path.abspath(cfg.INPUT_FILE))
         self.template_dir = os.path.join(os.path.dirname(__file__), 'templates')
         
         if json_path and os.path.exists(json_path):
@@ -188,7 +187,7 @@ class ImageGenerator:
         elif analyzer:
             self.json_data = analyzer.export_json()
         
-        self.enabled = ENABLE_IMAGE_EXPORT
+        self.enabled = cfg.ENABLE_IMAGE_EXPORT
     
     def display_words_for_selection(self):
         """展示词汇供用户选择"""
@@ -437,16 +436,10 @@ class ImageGenerator:
             'peak_hour': peak_hour
         }
     
-    def _generate_ai_comments(self):
-        """生成AI锐评"""
-        print("\n是否生成AI锐评?")
-        print("  1. 是，调用AI生成")
-        print("  2. 否，使用默认文案")
-        
-        choice = input("请选择 [1/2]: ").strip()
-        
+    def _generate_ai_comments(self, enable_ai=False):
+        """生成AI锐评（可静默）"""
         ai_gen = AICommentGenerator()
-        if choice == '1' and ai_gen.client:
+        if enable_ai and ai_gen.client:
             self.ai_comments = ai_gen.generate_batch(self.selected_words)
         else:
             self.ai_comments = {w['word']: ai_gen._fallback_comment(w['word']) 
@@ -529,13 +522,13 @@ class ImageGenerator:
         
         return None
     
-    def generate(self, auto_select=False):
+    def generate(self, auto_select=False, non_interactive=False, generate_image=False, enable_ai=False):
         """生成报告"""
         if not self.json_data:
             print("❌ 无数据")
             return None, None
         
-        if auto_select:
+        if auto_select or non_interactive:
             self.selected_words = self.json_data.get('topWords', [])[:10]
             print(f"📝 自动选择前10个热词")
         else:
@@ -546,19 +539,15 @@ class ImageGenerator:
             return None, None
         
         # AI锐评
-        self._generate_ai_comments()
+        self._generate_ai_comments(enable_ai)
         
         print("\n🎨 生成报告...")
         html_path = self.generate_html()
         if not html_path:
             return None, None
         
-        print("\n转换为图片?")
-        print("  1. 是")
-        print("  2. 否，只要HTML")
-        
         img_path = None
-        if input("[1/2]: ").strip() == '1':
+        if generate_image:
             img_path = self.html_to_image(html_path)
         
         return html_path, img_path
@@ -567,13 +556,13 @@ class ImageGenerator:
 def interactive_generate(json_path=None, analyzer=None):
     gen = ImageGenerator(analyzer=analyzer, json_path=json_path)
     gen.enabled = True
-    return gen.generate(auto_select=False)
+    return gen.generate(auto_select=False, enable_ai=True)
 
 
 def auto_generate(json_path=None, analyzer=None):
     gen = ImageGenerator(analyzer=analyzer, json_path=json_path)
     gen.enabled = True
-    return gen.generate(auto_select=True)
+    return gen.generate(auto_select=True, enable_ai=False)
 
 
 if __name__ == '__main__':

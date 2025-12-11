@@ -20,7 +20,7 @@ import json
 # 添加当前目录到路径
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from config import INPUT_FILE, ENABLE_IMAGE_EXPORT
+import config as cfg
 from utils import load_json
 from analyzer import ChatAnalyzer
 from report_generator import ReportGenerator
@@ -33,7 +33,7 @@ def main():
     if len(sys.argv) > 1:
         input_file = sys.argv[1]
     else:
-        input_file = INPUT_FILE
+        input_file = cfg.INPUT_FILE
     
     # 检查文件存在
     if not os.path.exists(input_file):
@@ -63,7 +63,7 @@ def main():
 
     json_data = analyzer.export_json()
     json_path = os.path.join(
-        os.path.dirname(os.path.abspath(INPUT_FILE)),
+        os.path.dirname(os.path.abspath(cfg.INPUT_FILE)),
         f"{analyzer.chat_name.replace('/', '_').replace(chr(92), '_')}_分析结果.json"
     )
     with open(json_path, 'w', encoding='utf-8') as f:
@@ -71,7 +71,7 @@ def main():
     print(f"📊 JSON已保存: {json_path}")
     
     # 图片生成（如果启用）
-    if ENABLE_IMAGE_EXPORT:
+    if cfg.ENABLE_IMAGE_EXPORT:
         print("\n" + "=" * 60)
         print("🖼️  可视化报告生成")
         print("=" * 60)

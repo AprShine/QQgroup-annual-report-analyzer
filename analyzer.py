@@ -5,15 +5,17 @@ import string
 import math
 import jieba
 from collections import Counter, defaultdict
-from config import *
-from utils import (extract_emojis, is_emoji, parse_timestamp, clean_text, 
-                   calculate_entropy, analyze_single_chars)
+import config as cfg
+from utils import (
+    extract_emojis,
+    is_emoji,
+    parse_timestamp,
+    clean_text,
+    calculate_entropy,
+    analyze_single_chars,
+)
 
 jieba.setLogLevel(jieba.logging.INFO)
-
-PUNCTUATION_PATTERN = re.compile(
-    r'[\s\.,!?;:，。！？；：、""''（）【】\[\](){}·~～@#$%^&*\-+=<>/\\|\'\"《》]'
-)
 
 class ChatAnalyzer:
     def __init__(self, data):
@@ -48,7 +50,7 @@ class ChatAnalyzer:
 
     def _is_bot_message(self, msg):
         """判断是否为机器人消息（基于 subMsgType）"""
-        if not FILTER_BOT_MESSAGES:
+        if not cfg.FILTER_BOT_MESSAGES:
             return False
         
         raw_msg = msg.get('rawMessage', {})
@@ -112,7 +114,7 @@ class ChatAnalyzer:
     def analyze(self):
         print(f"📊 开始分析: {self.chat_name}")
         print(f"📝 消息数: {len(self.messages)}")
-        print("=" * CONSOLE_WIDTH)
+        print("=" * cfg.CONSOLE_WIDTH)
         
         print("\n🧹 预处理文本...")
         self._preprocess_texts()
@@ -155,7 +157,7 @@ class ChatAnalyzer:
             elif text:
                 skipped += 1
         
-        if FILTER_BOT_MESSAGES and bot_filtered > 0:
+        if cfg.FILTER_BOT_MESSAGES and bot_filtered > 0:
             print(f"   有效文本: {len(self.cleaned_texts)} 条, 跳过: {skipped} 条, 过滤机器人: {bot_filtered} 条")
         else:
             print(f"   有效文本: {len(self.cleaned_texts)} 条, 跳过: {skipped} 条")
@@ -194,14 +196,14 @@ class ChatAnalyzer:
         
         # 筛选新词
         for word, freq in ngram_freq.items():
-            if freq < NEW_WORD_MIN_FREQ:
+            if freq < cfg.NEW_WORD_MIN_FREQ:
                 continue
             
             # 邻接熵
             left_ent = calculate_entropy(left_neighbors[word])
             right_ent = calculate_entropy(right_neighbors[word])
             min_ent = min(left_ent, right_ent)
-            if min_ent < ENTROPY_THRESHOLD:
+            if min_ent < cfg.ENTROPY_THRESHOLD:
                 continue
             
             # PMI（内部凝聚度）
@@ -216,7 +218,7 @@ class ChatAnalyzer:
             if min_pmi == float('inf'):
                 min_pmi = 0
             
-            if min_pmi < PMI_THRESHOLD:
+            if min_pmi < cfg.PMI_THRESHOLD:
                 continue
             
             self.discovered_words.add(word)
@@ -246,15 +248,15 @@ class ChatAnalyzer:
         # 找出应该合并的词对
         for (w1, w2), count in bigram_counter.items():
             merged = w1 + w2
-            if len(merged) > MERGE_MAX_LEN:
+            if len(merged) > cfg.MERGE_MAX_LEN:
                 continue
-            if count < MERGE_MIN_FREQ:
+            if count < cfg.MERGE_MIN_FREQ:
                 continue
             
             # 条件概率 P(w2|w1)
             if word_right_counter[w1] > 0:
                 prob = count / word_right_counter[w1]
-                if prob >= MERGE_MIN_PROB:
+                if prob >= cfg.MERGE_MIN_PROB:
                     self.merged_words[merged] = (w1, w2, count, prob)
                     jieba.add_word(merged, freq=count * 1000)
         
@@ -299,7 +301,7 @@ class ChatAnalyzer:
                 self.word_freq[word] += 1
                 if sender_uin:
                     self.word_contributors[word][sender_uin] += 1
-                if len(self.word_samples[word]) < SAMPLE_COUNT * 3:
+                if len(self.word_samples[word]) < cfg.SAMPLE_COUNT * 3:
                     self.word_samples[word].append(cleaned)
 
     def _fun_statistics(self):
@@ -370,9 +372,9 @@ class ChatAnalyzer:
             hour = parse_timestamp(timestamp)
             if hour is not None:
                 self.hour_distribution[hour] += 1
-                if hour in NIGHT_OWL_HOURS:
+                if hour in cfg.NIGHT_OWL_HOURS:
                     self.user_night_count[sender_uin] += 1
-                if hour in EARLY_BIRD_HOURS:
+                if hour in cfg.EARLY_BIRD_HOURS:
                     self.user_morning_count[sender_uin] += 1
             
             # 复读统计（用清理后文本，且内容要有意义）
@@ -396,22 +398,22 @@ class ChatAnalyzer:
         
         for word, freq in self.word_freq.items():
             # 长度过滤
-            if len(word) < MIN_WORD_LEN or len(word) > MAX_WORD_LEN:
+            if len(word) < cfg.MIN_WORD_LEN or len(word) > cfg.MAX_WORD_LEN:
                 continue
-            if freq < MIN_FREQ:
+            if freq < cfg.MIN_FREQ:
                 continue
             
             # 白名单直接通过
-            if word in WHITELIST:
+            if word in cfg.WHITELIST:
                 filtered_freq[word] = freq
                 continue
             
             # 黑名单跳过
-            if word in BLACKLIST:
+            if word in cfg.BLACKLIST:
                 continue
             
             # 停用词（emoji除外）
-            if word in STOPWORDS and not is_emoji(word):
+            if word in cfg.STOPWORDS and not is_emoji(word):
                 continue
             
             # 单字特殊处理（采用旧版逻辑）
@@ -422,7 +424,7 @@ class ChatAnalyzer:
                     stats = self.single_char_stats.get(word)
                     if stats:
                         total, indep, ratio = stats
-                        if ratio < SINGLE_MIN_SOLO_RATIO or indep < SINGLE_MIN_SOLO_COUNT:
+                        if ratio < cfg.SINGLE_MIN_SOLO_RATIO or indep < cfg.SINGLE_MIN_SOLO_COUNT:
                             continue
                     else:
                         continue
@@ -442,13 +444,13 @@ class ChatAnalyzer:
         # 采样
         for word in self.word_samples:
             samples = self.word_samples[word]
-            if len(samples) > SAMPLE_COUNT:
-                self.word_samples[word] = random.sample(samples, SAMPLE_COUNT)
+            if len(samples) > cfg.SAMPLE_COUNT:
+                self.word_samples[word] = random.sample(samples, cfg.SAMPLE_COUNT)
         
         print(f"   过滤后 {len(self.word_freq)} 个词")
 
     def get_top_words(self, n=None):
-        n = n or TOP_N
+        n = n or cfg.TOP_N
         return self.word_freq.most_common(n)
 
     def get_word_detail(self, word):
@@ -457,19 +459,19 @@ class ChatAnalyzer:
             'freq': self.word_freq.get(word, 0),
             'samples': self.word_samples.get(word, []),
             'contributors': [(self.get_name(uin), count) 
-                           for uin, count in self.word_contributors[word].most_common(CONTRIBUTOR_TOP_N)]
+                           for uin, count in self.word_contributors[word].most_common(cfg.CONTRIBUTOR_TOP_N)]
         }
 
     def get_fun_rankings(self):
         rankings = {}
         
-        def fmt(counter, top_n=RANK_TOP_N):
+        def fmt(counter, top_n=cfg.RANK_TOP_N):
             return [(self.get_name(uin), count) for uin, count in counter.most_common(top_n)]
         
         rankings['话痨榜'] = fmt(self.user_msg_count)
         rankings['字数榜'] = fmt(self.user_char_count)
         
-        sorted_avg = sorted(self.user_char_per_msg.items(), key=lambda x: x[1], reverse=True)[:RANK_TOP_N]
+        sorted_avg = sorted(self.user_char_per_msg.items(), key=lambda x: x[1], reverse=True)[:cfg.RANK_TOP_N]
         rankings['长文王'] = [(self.get_name(uin), f"{avg:.1f}字/条") for uin, avg in sorted_avg]
         
         rankings['图片狂魔'] = fmt(self.user_image_count)
@@ -501,9 +503,9 @@ class ChatAnalyzer:
                             'uin': uin,
                             'count': count
                         }
-                        for uin, count in self.word_contributors[word].most_common(CONTRIBUTOR_TOP_N)
+                        for uin, count in self.word_contributors[word].most_common(cfg.CONTRIBUTOR_TOP_N)
                     ],
-                    'samples': self.word_samples.get(word, [])[:SAMPLE_COUNT]
+                    'samples': self.word_samples.get(word, [])[:cfg.SAMPLE_COUNT]
                 }
                 for word, freq in self.get_top_words()
             ],
@@ -512,7 +514,7 @@ class ChatAnalyzer:
         }
         
         # 趣味榜单（包含uin）
-        def fmt_with_uin(counter, top_n=RANK_TOP_N):
+        def fmt_with_uin(counter, top_n=cfg.RANK_TOP_N):
             return [
                 {'name': self.get_name(uin), 'uin': uin, 'value': count}
                 for uin, count in counter.most_common(top_n)
@@ -522,7 +524,7 @@ class ChatAnalyzer:
         result['rankings']['字数榜'] = fmt_with_uin(self.user_char_count)
         
         # 长文王特殊处理
-        sorted_avg = sorted(self.user_char_per_msg.items(), key=lambda x: x[1], reverse=True)[:RANK_TOP_N]
+        sorted_avg = sorted(self.user_char_per_msg.items(), key=lambda x: x[1], reverse=True)[:cfg.RANK_TOP_N]
         result['rankings']['长文王'] = [
             {'name': self.get_name(uin), 'uin': uin, 'value': f"{avg:.1f}字/条"}
             for uin, avg in sorted_avg
