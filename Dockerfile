@@ -62,6 +62,12 @@ RUN playwright install chromium && \
 # 复制项目文件
 COPY . .
 
+# 确保 config.py 存在（从示例文件复制或创建默认）
+RUN if [ ! -f config.py ]; then \
+    cp config.example.py config.py 2>/dev/null || \
+    echo "# Default config - using environment variables" > config.py; \
+    fi
+
 # 从构建阶段复制前端构建产物
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
@@ -74,7 +80,7 @@ ENV FLASK_ENV=production
 ENV PORT=5000
 ENV PYTHONUNBUFFERED=1
 
-# 暴露端口
+# 暴露端口（支持通过环境变量覆盖）
 EXPOSE 5000
 
 # 启动命令
