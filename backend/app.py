@@ -310,6 +310,7 @@ def upload_and_analyze():
         safe_filename = file.filename
 
     auto_select = request.form.get("auto_select", "false").lower() == "true"
+    logger.info(f"🔍 收到上传请求 - auto_select参数: {request.form.get('auto_select')}, 解析后: {auto_select}")
 
     start_date = request.form.get('start_date')
     end_date = request.form.get('end_date')
@@ -354,31 +355,54 @@ def upload_and_analyze():
         report = analyzer.export_json()
 
         all_words = report.get('topWords', [])[:100]
+        
+        # 确保有足够的词汇
+        if len(all_words) == 0:
+            logger.error("❌ 分析结果中没有找到任何热词")
+            cleanup_temp_files(temp_path)
+            return jsonify({"error": "分析结果中没有找到热词，请检查聊天记录文件"}), 500
 
-        if auto_select and AI_WORD_SELECTION_ENABLED:
-            logger.info("🤖 启动AI智能选词...")
-            ai_selector = AIWordSelector()
+        if auto_select:
+            logger.info("✅ 进入自动选词模式")
+            # 自动选词模式：根据AI功能是否开启选择不同的选词方式
+            if AI_WORD_SELECTION_ENABLED:
+                logger.info("🤖 启动AI智能选词...")
+                ai_selector = AIWordSelector()
 
-            if ai_selector.client:
-                selected_word_objects = ai_selector.select_words(all_words, top_n=200)
+                if ai_selector.client:
+                    selected_word_objects = ai_selector.select_words(all_words, top_n=200)
 
-                if selected_word_objects:
-                    # 按词频从高到低排序
-                    selected_word_objects_sorted = sorted(
-                        selected_word_objects,
-                        key=lambda w: w['freq'],
-                        reverse=True
-                    )
-                    selected_words = [w['word'] for w in selected_word_objects_sorted]
-                    logger.info(f"✅ AI选词成功（已按词频排序）: {', '.join(selected_words)}")
+                    if selected_word_objects:
+                        # 按词频从高到低排序
+                        selected_word_objects_sorted = sorted(
+                            selected_word_objects,
+                            key=lambda w: w['freq'],
+                            reverse=True
+                        )
+                        selected_words = [w['word'] for w in selected_word_objects_sorted[:10]]
+                        # 如果AI选词少于10个，用前10个热词补齐
+                        if len(selected_words) < 10:
+                            logger.warning(f"AI选词只有{len(selected_words)}个，用前10个热词补齐")
+                            selected_words = [w['word'] for w in all_words[:10]]
+                        logger.info(f"✅ AI选词成功（已按词频排序）: {', '.join(selected_words)}")
+                    else:
+                        logger.warning("AI选词失败，使用前10个热词")
+                        selected_words = [w['word'] for w in all_words[:10]]
                 else:
-                    logger.warning("AI选词失败，使用前10个热词")
+                    logger.warning("OpenAI未配置，使用前10个热词")
                     selected_words = [w['word'] for w in all_words[:10]]
             else:
-                logger.warning("OpenAI未配置，使用前10个热词")
+                # AI功能未开启，直接使用前10个热词
+                logger.info("📋 使用默认前10个热词（AI功能未开启）")
+                if len(all_words) < 10:
+                    logger.warning(f"可用词汇只有{len(all_words)}个，少于10个")
                 selected_words = [w['word'] for w in all_words[:10]]
+                if len(selected_words) < 10:
+                    logger.error(f"无法选择10个词，只有{len(selected_words)}个可用词汇")
+                    raise ValueError(f"可用词汇不足10个，无法生成报告")
 
             user_id = get_or_create_user_id()
+            logger.info(f"📝 准备生成报告，已选择{len(selected_words)}个词: {', '.join(selected_words[:5])}...")
             result = finalize_report(
                 report_id=report_id,
                 analyzer=None,  
@@ -387,6 +411,7 @@ def upload_and_analyze():
                 report_data=report,
                 user_id=user_id
             )
+            logger.info(f"✅ 自动选词模式报告生成完成，返回结果: {result.get_json() if hasattr(result, 'get_json') else result}")
             cleanup_temp_files(temp_path)
             return result
         else:
@@ -402,6 +427,9 @@ def upload_and_analyze():
             })
     except Exception as exc:
         import traceback
+        error_trace = traceback.format_exc()
+        logger.error(f"❌ upload_and_analyze失败: {exc}")
+        logger.error(f"错误堆栈:\n{error_trace}")
         traceback.print_exc()
         cleanup_temp_files(temp_path)
         return jsonify({"error": f"分析失败: {exc}"}), 500
@@ -492,12 +520,28 @@ def finalize_report(report_id: str, analyzer, selected_words: List[str],
             report = report_data
         
         # 转换selected_words为详细对象
-        all_words = {w['word']: w for w in report.get('topWords', [])}
+        top_words = report.get('topWords', [])
+        logger.info(f"📊 报告中的topWords数量: {len(top_words)}")
+        if not isinstance(top_words, list):
+            logger.error(f"❌ topWords格式错误，期望list，实际: {type(top_words)}")
+            raise ValueError(f"topWords格式错误: {type(top_words)}")
+        
+        all_words = {}
+        for w in top_words:
+            if isinstance(w, dict) and 'word' in w:
+                all_words[w['word']] = w
+            else:
+                logger.warning(f"⚠️ 跳过无效的词汇项: {w}")
+        
+        logger.info(f"📝 构建的all_words字典包含{len(all_words)}个词")
+        logger.info(f"📝 需要处理的selected_words: {selected_words}")
+        
         selected_word_objects = []
         for word in selected_words:
             if word in all_words:
                 selected_word_objects.append(all_words[word])
             else:
+                logger.warning(f"⚠️ 词汇 '{word}' 不在topWords中，使用默认值")
                 selected_word_objects.append({"word": word, "freq": 0, "samples": []})
         
         ai_comments = generate_ai_comments(selected_word_objects)
@@ -531,6 +575,9 @@ def finalize_report(report_id: str, analyzer, selected_words: List[str],
         })
     except Exception as exc:
         import traceback
+        error_trace = traceback.format_exc()
+        logger.error(f"❌ finalize_report失败: {exc}")
+        logger.error(f"错误堆栈:\n{error_trace}")
         traceback.print_exc()
         return jsonify({"error": f"最终化失败: {exc}"}), 500
 
