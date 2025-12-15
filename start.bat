@@ -202,7 +202,7 @@ if %RETRY_COUNT% gtr %MAX_RETRIES% (
 )
 
 :: 使用PowerShell检查后端健康状态（兼容性更好）
-powershell -Command "try { $response = Invoke-WebRequest -Uri 'http://localhost:5000/api/health' -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; exit 0 } catch { exit 1 }" >nul 2>&1
+powershell -Command "try { $response = Invoke-WebRequest -Uri 'http://127.0.0.1:5000/api/health' -Proxy $null -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; exit 0 } catch { exit 1 }" >nul 2>&1
 if errorlevel 1 (
     timeout /t 1 /nobreak >nul
     goto wait_backend
